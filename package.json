@@ -1,0 +1,126 @@
+{
+  "name": "php-enhanced-pro",
+  "displayName": "PHP Enhanced Pro",
+  "description": "Professional PHP development with advanced syntax highlighting, IntelliSense, linting, and debugging",
+  "version": "2.0.0",
+  "publisher": "your-name",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": ["Programming Languages", "Linters", "Snippets", "Formatters"],
+  "keywords": ["php", "intellisense", "autocomplete", "syntax", "linter"],
+  "activationEvents": [
+    "onLanguage:php",
+    "onLanguage:blade",
+    "onLanguage:dql",
+    "onCommand:php.runFile",
+    "onCommand:php.formatDocument",
+    "onCommand:laravel.artisan",
+    "onCommand:laravel.routeList",
+    "onCommand:php.generateUnitTest",
+    "workspaceContains:**/*.php",
+    "workspaceContains:**/artisan"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "php",
+        "extensions": [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"],
+        "aliases": ["PHP", "php"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "blade",
+        "extensions": [".blade.php"],
+        "aliases": ["Blade", "blade"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "dql",
+        "extensions": [".dql"],
+        "aliases": ["DQL", "dql"]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "php",
+        "scopeName": "source.php",
+        "path": "./syntaxes/php.tmLanguage.json"
+      },
+      {
+        "language": "blade",
+        "scopeName": "text.html.blade",
+        "path": "./syntaxes/blade.tmLanguage.json"
+      },
+      {
+        "language": "dql",
+        "scopeName": "source.dql",
+        "path": "./syntaxes/dql.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "php.runFile",
+        "title": "PHP: Run Current File"
+      },
+      {
+        "command": "php.formatDocument",
+        "title": "PHP: Format Document"
+      },
+      {
+        "command": "php.validateFile",
+        "title": "PHP: Validate Syntax"
+      },
+      {
+        "command": "php.generateUnitTest",
+        "title": "PHP: Generate PHPUnit Test"
+      },
+      {
+        "command": "laravel.artisan",
+        "title": "Laravel: Run Artisan Command"
+      },
+      {
+        "command": "laravel.routeList",
+        "title": "Laravel: Show Routes"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "php.runFile",
+        "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p",
+        "when": "editorLangId == php"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "PHP Enhanced Pro",
+      "properties": {
+        "php.executablePath": {
+          "type": "string",
+          "default": "php",
+          "description": "Path to PHP executable"
+        },
+        "php.validate.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable PHP syntax validation"
+        },
+        "php.suggest.basic": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable basic PHP suggestions"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "node --check extension.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.60.0",
+    "@types/node": "14.x"
+  }
+}
