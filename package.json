@@ -9,6 +9,10 @@
   },
   "categories": ["Programming Languages", "Linters", "Snippets", "Formatters"],
   "keywords": ["php", "intellisense", "autocomplete", "syntax", "linter"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/techwithlanre/php-pro.git"
+  },
   "activationEvents": [
     "onLanguage:php",
     "onLanguage:blade",
