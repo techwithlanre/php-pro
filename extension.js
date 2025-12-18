@@ -144,6 +144,9 @@ const phpWorkspaceClassInfoByFqn = new Map();
 const phpWorkspaceClassFqnsByShortName = new Map();
 const phpWorkspaceFunctionInfoByKey = new Map();
 const phpBuiltInFunctionSignatureCache = new Map();
+let phpWorkspaceReferenceIndexBuilding = null;
+const phpWorkspaceReferenceIndex = new Map();
+let phpWorkspaceReferenceIndexVersion = -1;
 let laravelRouteIndexBuilding = null;
 const laravelRouteIndex = new Map();
 const laravelRouteIndexKeysByUri = new Map();
@@ -422,6 +425,41 @@ function activate(context) {
     }
   }, { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] });
 
+  const codeLensProvider = vscode.languages.registerCodeLensProvider('php', {
+    provideCodeLenses(document) {
+      const decls = extractPhpFunctionDeclsForCodeLens(document);
+      return decls.map((d) => {
+        const lens = new vscode.CodeLens(d.range);
+        lens.data = d;
+        return lens;
+      });
+    },
+    async resolveCodeLens(codeLens) {
+      const data = codeLens.data;
+      if (!data) return codeLens;
+      await ensurePhpWorkspaceReferenceIndex();
+      const refs = resolvePhpReferenceLocationsForCodeLens(data, codeLens.range);
+      const count = refs.length;
+      const title = `${count} ${count === 1 ? 'reference' : 'references'}`;
+      codeLens.command = {
+        title,
+        command: 'php.showReferences',
+        arguments: [
+          data.uri,
+          { line: data.range.start.line, character: data.range.start.character },
+          refs.map((loc) => ({
+            uri: loc.uri.toString(),
+            range: {
+              start: { line: loc.range.start.line, character: loc.range.start.character },
+              end: { line: loc.range.end.line, character: loc.range.end.character }
+            }
+          }))
+        ]
+      };
+      return codeLens;
+    }
+  });
+
   const runFileCommand = vscode.commands.registerCommand('php.runFile', () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor || editor.document.languageId !== 'php') {
@@ -647,6 +685,21 @@ function activate(context) {
     }
   });
 
+  const showReferencesCommand = vscode.commands.registerCommand('php.showReferences', async (uriString, pos, rawLocations) => {
+    const uri = uriString ? vscode.Uri.parse(uriString) : (vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.uri : null);
+    if (!uri) return;
+    const position = pos && typeof pos.line === 'number' ? new vscode.Position(pos.line, pos.character || 0) : new vscode.Position(0, 0);
+    const locations = Array.isArray(rawLocations)
+      ? rawLocations.map((l) => {
+          const locUri = l && l.uri ? vscode.Uri.parse(l.uri) : uri;
+          const s = l && l.range && l.range.start ? l.range.start : { line: 0, character: 0 };
+          const e = l && l.range && l.range.end ? l.range.end : { line: s.line, character: s.character };
+          return new vscode.Location(locUri, new vscode.Range(new vscode.Position(s.line, s.character), new vscode.Position(e.line, e.character)));
+        })
+      : [];
+    await vscode.commands.executeCommand('editor.action.showReferences', uri, position, locations);
+  });
+
   context.subscriptions.push(
     completionProvider,
     hoverProvider,
@@ -660,11 +713,13 @@ function activate(context) {
     typeHierarchyProvider,
     importCodeActionProvider,
     unitTestCodeActionProvider,
+    codeLensProvider,
     runFileCommand,
     validateCommand,
     laravelArtisanCommand,
     laravelRouteListCommand,
-    generateUnitTestCommand
+    generateUnitTestCommand,
+    showReferencesCommand
   );
 }
 
@@ -680,6 +735,159 @@ async function fileExists(uri) {
   } catch {
     return false;
   }
+}
+
+function extractPhpFunctionDeclsForCodeLens(document) {
+  const text = document.getText();
+  const classRanges = [];
+  const decls = [];
+
+  const classDeclRe = /\b(?:abstract\s+|final\s+)?(class|interface|trait|enum)\s+([A-Za-z_\x80-\xff][\w\x80-\xff]*)\b/g;
+  let match;
+  while ((match = classDeclRe.exec(text))) {
+    const className = match[2];
+    const braceStart = text.indexOf('{', match.index);
+    if (braceStart === -1) continue;
+    const braceEnd = findMatchingBrace(text, braceStart);
+    if (braceEnd === -1) continue;
+    classRanges.push({ name: className, start: braceStart, end: braceEnd });
+    const body = text.slice(braceStart, braceEnd + 1);
+    const methodRe = /\bfunction\s+&?\s*([A-Za-z_\x80-\xff][\w\x80-\xff]*)\s*\(/g;
+    let m;
+    while ((m = methodRe.exec(body))) {
+      const methodName = m[1];
+      const nameIdx = braceStart + m.index + m[0].lastIndexOf(methodName);
+      const start = document.positionAt(nameIdx);
+      const end = document.positionAt(nameIdx + methodName.length);
+      decls.push({
+        kind: 'method',
+        name: methodName,
+        className,
+        uri: document.uri.toString(),
+        range: new vscode.Range(start, end)
+      });
+      if (decls.length >= 250) return decls;
+    }
+  }
+
+  const isInsideClass = (index) => classRanges.some((r) => index >= r.start && index <= r.end);
+  const functionRe = /\bfunction\s+&?\s*([A-Za-z_\x80-\xff][\w\x80-\xff]*)\s*\(/g;
+  while ((match = functionRe.exec(text))) {
+    if (isInsideClass(match.index)) continue;
+    const fnName = match[1];
+    const nameIdx = match.index + match[0].lastIndexOf(fnName);
+    const start = document.positionAt(nameIdx);
+    const end = document.positionAt(nameIdx + fnName.length);
+    decls.push({
+      kind: 'function',
+      name: fnName,
+      className: '',
+      uri: document.uri.toString(),
+      range: new vscode.Range(start, end)
+    });
+    if (decls.length >= 250) return decls;
+  }
+
+  return decls;
+}
+
+function resolvePhpReferenceLocationsForCodeLens(data, declRange) {
+  const unique = new Map();
+  const pushAll = (locs) => {
+    for (const loc of locs || []) {
+      if (!loc || !loc.uri || !loc.range) continue;
+      const key = `${loc.uri.toString()}@${loc.range.start.line}:${loc.range.start.character}:${loc.range.end.line}:${loc.range.end.character}`;
+      if (!unique.has(key)) unique.set(key, loc);
+    }
+  };
+
+  if (data.kind === 'function') {
+    pushAll(phpWorkspaceReferenceIndex.get(`fn:${data.name}`) || []);
+  } else if (data.kind === 'method') {
+    pushAll(phpWorkspaceReferenceIndex.get(`method:${data.name}`) || []);
+    pushAll(phpWorkspaceReferenceIndex.get(`static:${data.className}::${data.name}`) || []);
+  }
+
+  const declKey = `${data.uri}@${declRange.start.line}:${declRange.start.character}:${declRange.end.line}:${declRange.end.character}`;
+  unique.delete(declKey);
+  return Array.from(unique.values());
+}
+
+async function ensurePhpWorkspaceReferenceIndex() {
+  if (phpWorkspaceReferenceIndexBuilding) return phpWorkspaceReferenceIndexBuilding;
+  if (phpWorkspaceReferenceIndexVersion === phpWorkspaceIndexVersion) return;
+  phpWorkspaceReferenceIndexBuilding = (async () => {
+    phpWorkspaceReferenceIndex.clear();
+    const include = '**/*.{php,phtml,php3,php4,php5,phps}';
+    const exclude = '{**/node_modules/**,**/vendor/**,**/.git/**,**/.vscode/**,**/dist/**,**/out/**}';
+    const uris = await vscode.workspace.findFiles(include, exclude);
+    for (const uri of uris) {
+      let doc;
+      try {
+        doc = await vscode.workspace.openTextDocument(uri);
+      } catch {
+        continue;
+      }
+      if (!doc || doc.languageId !== 'php') continue;
+      const refs = extractPhpReferencesFromDocument(doc);
+      for (const r of refs) {
+        const current = phpWorkspaceReferenceIndex.get(r.key) || [];
+        current.push(r.location);
+        phpWorkspaceReferenceIndex.set(r.key, current);
+      }
+    }
+    phpWorkspaceReferenceIndexVersion = phpWorkspaceIndexVersion;
+  })().finally(() => {
+    phpWorkspaceReferenceIndexBuilding = null;
+  });
+  return phpWorkspaceReferenceIndexBuilding;
+}
+
+function extractPhpReferencesFromDocument(document) {
+  const text = document.getText();
+  const results = [];
+
+  const push = (key, index, length) => {
+    const start = document.positionAt(index);
+    const end = document.positionAt(index + length);
+    results.push({ key, location: new vscode.Location(document.uri, new vscode.Range(start, end)) });
+  };
+
+  const staticCallRe = /([\\A-Za-z_\x80-\xff][\\\w\x80-\xff]*|self|static|parent)\s*::\s*([A-Za-z_\x80-\xff][\w\x80-\xff]*)\s*\(/g;
+  let match;
+  while ((match = staticCallRe.exec(text))) {
+    const classTokenRaw = match[1];
+    const method = match[2];
+    const classToken = String(classTokenRaw || '').replace(/^\\+/, '');
+    const short = classToken.split('\\').pop();
+    const methodIndex = match.index + match[0].lastIndexOf(method);
+    push(`static:${classToken}::${method}`, methodIndex, method.length);
+    if (short) push(`static:${short}::${method}`, methodIndex, method.length);
+    if (results.length >= 5000) break;
+  }
+
+  const methodCallRe = /->\s*([A-Za-z_\x80-\xff][\w\x80-\xff]*)\s*\(/g;
+  while ((match = methodCallRe.exec(text))) {
+    const method = match[1];
+    const methodIndex = match.index + match[0].lastIndexOf(method);
+    push(`method:${method}`, methodIndex, method.length);
+    if (results.length >= 5000) break;
+  }
+
+  const fnCallRe = /\b([A-Za-z_\x80-\xff][\w\x80-\xff]*)\s*\(/g;
+  while ((match = fnCallRe.exec(text))) {
+    const name = match[1];
+    if (!name || phpKeywords.includes(name)) continue;
+    const before = text.slice(Math.max(0, match.index - 20), match.index);
+    if (/(?:function|new)\s+$/.test(before)) continue;
+    const prev2 = text.slice(Math.max(0, match.index - 2), match.index);
+    if (prev2 === '->' || prev2 === '::') continue;
+    const nameIndex = match.index + match[0].indexOf(name);
+    push(`fn:${name}`, nameIndex, name.length);
+    if (results.length >= 5000) break;
+  }
+
+  return results;
 }
 
 function getPhpTestTargetAtPosition(document, position) {
