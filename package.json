@@ -1,14 +1,15 @@
 {
   "name": "php-enhanced-pro",
   "displayName": "PHP Enhanced Pro",
-  "description": "Professional PHP development with advanced syntax highlighting, IntelliSense, linting, and debugging",
-  "version": "2.0.0",
+  "description": "Supercharge your PHP coding experience. From intelligent auto-completion to powerful syntax highlighting and code formatting, this extension helps developers write cleaner, faster, and more reliable PHP.",
+  "version": "2.0.1",
   "publisher": "JamiuOlanrewaju",
   "engines": {
     "vscode": "^1.60.0"
   },
   "categories": ["Programming Languages", "Linters", "Snippets", "Formatters"],
   "keywords": ["php", "intellisense", "autocomplete", "syntax", "linter"],
+  "icon": "icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/techwithlanre/php-pro.git"
