@@ -2,7 +2,7 @@
   "name": "php-enhanced-pro",
   "displayName": "PHP Enhanced Pro",
   "description": "Supercharge your PHP coding experience. From intelligent auto-completion to powerful syntax highlighting and code formatting, this extension helps developers write cleaner, faster, and more reliable PHP.",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "publisher": "JamiuOlanrewaju",
   "engines": {
     "vscode": "^1.60.0"
