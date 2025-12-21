@@ -9,8 +9,8 @@ on:
         default: false
         type: boolean
   push:
-    tags:
-      - "v2.0.3"  # Update this tag pattern as needed
+    branches:
+      - main  # Update this tag pattern as needed
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || inputs.publish == true
+  
     steps:
       - uses: actions/checkout@v4
 
@@ -36,7 +36,7 @@ jobs:
       - run: npm run compile
 
       - name: Verify tag matches package.json version
-        if: startsWith(github.ref, 'refs/tags/v')
+        
         run: node -e "const pkg=require('./package.json'); const tag=process.env.GITHUB_REF_NAME; const expected='v'+pkg.version; if(tag!==expected){ console.error(`Tag ${tag} does not match package.json version ${expected}`); process.exit(1);} console.log('ok')"
 
       - name: Package VSIX
