@@ -10,7 +10,7 @@ on:
         type: boolean
   push:
     tags:
-      - "v*.*.*"
+      - "v2.0.3"  # Update this tag pattern as needed
 
 permissions:
   contents: read
