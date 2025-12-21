@@ -113,19 +113,43 @@ const phpFunctionCategoryByName = (() => {
   return map;
 })();
 
+const extensionName = ' (PHP Enhanced Pro)';
+
 const phpSnippets = {
-  'class': { prefix: ['class', 'cl', 'cls'], body: ['class ${1:ClassName}', '{', '\tprivate ${2:\\$property};', '', '\tpublic function __construct(${3:\\$param})', '\t{', '\t\t\\$this->${2:property} = ${3:\\$param};', '\t}', '', '\tpublic function ${4:methodName}()', '\t{', '\t\t${5:// method body}', '\t}', '}'], description: 'Create a PHP class' },
-  'function': { prefix: ['function', 'func', 'fn', 'fun'], body: ['function ${1:functionName}(${2:\\$params}): ${3:void}', '{', '\t${4:// function body}', '}'], description: 'Create a PHP function' },
-  'foreach': { prefix: ['foreach', 'fe', 'fore', 'each'], body: ['foreach (${1:\\$array} as ${2:\\$key} => ${3:\\$value}) {', '\t${4:// code}', '}'], description: 'Foreach loop' },
-  'if': { prefix: ['if', 'iff'], body: ['if (${1:condition}) {', '\t${2:// code}', '}'], description: 'If statement' },
-  'ifelse': { prefix: ['ifelse', 'ife', 'ifelsee'], body: ['if (${1:condition}) {', '\t${2:// code}', '} else {', '\t${3:// code}', '}'], description: 'If-else statement' },
-  'switch': { prefix: ['switch', 'sw'], body: ['switch (${1:expression}) {', '\tcase ${2:value}:', '\t\t${3:// code}', '\t\tbreak;', '\tdefault:', '\t\t${4:// code}', '}'], description: 'Switch statement' },
-  'trycatch': { prefix: ['try', 'trycatch', 'tc'], body: ['try {', '\t${1:// code}', '} catch (${2:Exception} ${3:\\$e}) {', '\t${4:// handle exception}', '}'], description: 'Try-catch block' },
-  'prop': { prefix: ['prop', 'property', 'priv'], body: ['private ${1:type} \\$${2:name};'], description: 'Private property' },
-  'pubfn': { prefix: ['pubfn', 'publicfn', 'pubf'], body: ['public function ${1:methodName}(${2:\\$params}): ${3:void}', '{', '\t${4:// code}', '}'], description: 'Public method' },
-  'prifn': { prefix: ['prifn', 'privatefn', 'prif'], body: ['private function ${1:methodName}(${2:\\$params}): ${3:void}', '{', '\t${4:// code}', '}'], description: 'Private method' },
-  'namespace': { prefix: ['namespace', 'ns'], body: ['namespace ${1:Vendor\\\\Package};'], description: 'Namespace declaration' },
-  'use': { prefix: ['use', 'import'], body: ['use ${1:Vendor\\\\Package\\\\ClassName};'], description: 'Use/import statement' }
+  'class': { prefix: ['class', 'cl', 'cls'], body: ['class ${1:ClassName}', '{', '\tprivate ${2:\\$property};', '', '\tpublic function __construct(${3:\\$param})', '\t{', '\t\t\\$this->${2:property} = ${3:\\$param};', '\t}', '', '\tpublic function ${4:methodName}()', '\t{', '\t\t${5:// method body}', '\t}', '}'], description: 'Create a PHP Class' + extensionName },
+  'enum': { prefix: ['enum', 'en'], body: ['enum ${1:EnumName}: ${2:string}', '{', '\tcase ${3:CASE_ONE} = \'${4:value1}\';', '\tcase ${5:CASE_TWO} = \'${6:value2}\';', '}'], description: 'Create a PHP Enum (PHP 8.1+)' + extensionName },
+  'interface': { prefix: ['interface', 'int'], body: ['interface ${1:InterfaceName}', '{', '\tpublic function ${2:methodName}(${3:\\$params}): ${4:void};', '}'], description: 'Create a PHP Interface' + extensionName },
+  'trait': { prefix: ['trait', 'tr'], body: ['trait ${1:TraitName}', '{', '\tpublic function ${2:methodName}()', '\t{', '\t\t${3:// method body}', '\t}', '}'], description: 'Create a PHP Trait' + extensionName },
+  'abstract': { prefix: ['abstract', 'abs', 'abscl'], body: ['abstract class ${1:AbstractClass}', '{', '\tabstract public function ${2:methodName}(${3:\\$params}): ${4:void};', '', '\tpublic function ${5:concreteMethod}()', '\t{', '\t\t${6:// method body}', '\t}', '}'], description: 'Create an Abstract Class' + extensionName },
+  'function': { prefix: ['function', 'func', 'fn', 'fun'], body: ['function ${1:functionName}(${2:\\$params}): ${3:void}', '{', '\t${4:// function body}', '}'], description: 'Create a PHP function' + extensionName },
+  'foreach': { prefix: ['foreach', 'fe', 'fore', 'each'], body: ['foreach (${1:\\$array} as ${2:\\$key} => ${3:\\$value}) {', '\t${4:// code}', '}'], description: 'Foreach loop' + extensionName },
+  'for': { prefix: ['for', 'forloop'], body: ['for (${1:\\$i} = ${2:0}; ${1:\\$i} < ${3:count}; ${1:\\$i}++) {', '\t${4:// code}', '}'], description: 'For loop' + extensionName },
+  'while': { prefix: ['while', 'wh'], body: ['while (${1:condition}) {', '\t${2:// code}', '}'], description: 'While loop' + extensionName },
+  'if': { prefix: ['if', 'iff'], body: ['if (${1:condition}) {', '\t${2:// code}', '}'], description: 'If statement' + extensionName },
+  'ifelse': { prefix: ['ifelse', 'ife', 'ifelsee'], body: ['if (${1:condition}) {', '\t${2:// code}', '} else {', '\t${3:// code}', '}'], description: 'If-else statement' + extensionName },
+  'elseif': { prefix: ['elseif', 'elif'], body: ['if (${1:condition}) {', '\t${2:// code}', '} elseif (${3:condition}) {', '\t${4:// code}', '} else {', '\t${5:// code}', '}'], description: 'If-elseif-else statement' + extensionName },
+  'switch': { prefix: ['switch', 'sw'], body: ['switch (${1:expression}) {', '\tcase ${2:value}:', '\t\t${3:// code}', '\t\tbreak;', '\tdefault:', '\t\t${4:// code}', '}'], description: 'Switch statement' + extensionName },
+  'trycatch': { prefix: ['try', 'trycatch', 'tc'], body: ['try {', '\t${1:// code}', '} catch (${2:Exception} ${3:\\$e}) {', '\t${4:// handle exception}', '}'], description: 'Try-Catch block' + extensionName },
+  'trycatchfinally': { prefix: ['tryfinally', 'tcf'], body: ['try {', '\t${1:// code}', '} catch (${2:Exception} ${3:\\$e}) {', '\t${4:// handle exception}', '} finally {', '\t${5:// cleanup code}', '}'], description: 'Try-Catch-Finally block' + extensionName },
+  'construct': { prefix: ['construct', 'cons', '__construct'], body: ['public function __construct(${1:\\$params})', '{', '\t${2:// constructor body}', '}'], description: 'Constructor method' + extensionName },
+  'destruct': { prefix: ['destruct', 'dest', '__destruct'], body: ['public function __destruct()', '{', '\t${1:// destructor body}', '}'], description: 'Destructor method' + extensionName },
+  'prop': { prefix: ['prop', 'property', 'priv'], body: ['private ${1:type} \\$${2:name};'], description: 'Private property' + extensionName },
+  'pubprop': { prefix: ['pubprop', 'pp'], body: ['public ${1:type} \\$${2:name};'], description: 'Public property' + extensionName },
+  'proprop': { prefix: ['proprop', 'protected'], body: ['protected ${1:type} \\$${2:name};'], description: 'Protected property' + extensionName },
+  'pubfn': { prefix: ['pubfn', 'publicfn', 'pubf'], body: ['public function ${1:methodName}(${2:\\$params}): ${3:void}', '{', '\t${4:// code}', '}'], description: 'Public Method' + extensionName },
+  'prifn': { prefix: ['prifn', 'privatefn', 'prif'], body: ['private function ${1:methodName}(${2:\\$params}): ${3:void}', '{', '\t${4:// code}', '}'], description: 'Private Method' + extensionName },
+  'profn': { prefix: ['profn', 'protectedfn', 'prof'], body: ['protected function ${1:methodName}(${2:\\$params}): ${3:void}', '{', '\t${4:// code}', '}'], description: 'Protected Method' + extensionName },
+  'staticfn': { prefix: ['staticfn', 'static', 'stfn'], body: ['public static function ${1:methodName}(${2:\\$params}): ${3:void}', '{', '\t${4:// code}', '}'], description: 'Static Method' + extensionName },
+  'getter': { prefix: ['getter', 'get'], body: ['public function get${1:Property}(): ${2:type}', '{', '\treturn \\$this->${3:property};', '}'], description: 'Getter method' + extensionName },
+  'setter': { prefix: ['setter', 'set'], body: ['public function set${1:Property}(${2:type} \\$${3:value}): void', '{', '\t\\$this->${3:value} = \\$${3:value};', '}'], description: 'Setter method' + extensionName },
+  'namespace': { prefix: ['namespace', 'ns'], body: ['namespace ${1:Vendor\\\\Package};'], description: 'Namespace declaration' + extensionName },
+  'use': { prefix: ['use', 'import'], body: ['use ${1:Vendor\\\\Package\\\\ClassName};'], description: 'Use/import statement' + extensionName },
+  'echo': { prefix: ['echo', 'ec'], body: ['echo ${1:"output"};'], description: 'Echo statement' + extensionName },
+  'var_dump': { prefix: ['var_dump', 'vd', 'dump'], body: ['var_dump(${1:\\$variable});'], description: 'Var dump' + extensionName },
+  'print_r': { prefix: ['print_r', 'pr'], body: ['print_r(${1:\\$variable});'], description: 'Print array' + extensionName },
+  'die': { prefix: ['die', 'exit'], body: ['die(${1:"message"});'], description: 'Die/exit statement' + extensionName },
+  'const': { prefix: ['const', 'constant'], body: ['const ${1:CONSTANT_NAME} = ${2:value};'], description: 'Define constant' + extensionName },
+  'readonly': { prefix: ['readonly', 'ro'], body: ['public readonly ${1:type} \\$${2:name};'], description: 'Readonly property (PHP 8.1+)' + extensionName }
 };
 
 const phpMagicMethods = ['__construct', '__destruct', '__call', '__callStatic', '__get', '__set', '__isset', '__unset', '__sleep', '__wakeup', '__serialize', '__unserialize', '__toString', '__invoke', '__set_state', '__clone', '__debugInfo'];
@@ -2355,18 +2379,18 @@ function organizePhpUseStatements(text) {
 
 function createPhpSemanticTokensProvider() {
   const tokenTypes = [
-    vscode.SemanticTokenTypes.namespace,
-    vscode.SemanticTokenTypes.class,
-    vscode.SemanticTokenTypes.interface,
-    vscode.SemanticTokenTypes.enum,
-    vscode.SemanticTokenTypes.function,
-    vscode.SemanticTokenTypes.method,
-    vscode.SemanticTokenTypes.property,
-    vscode.SemanticTokenTypes.variable,
-    vscode.SemanticTokenTypes.parameter,
-    vscode.SemanticTokenTypes.type,
-    vscode.SemanticTokenTypes.constant,
-    vscode.SemanticTokenTypes.keyword
+    'namespace',
+    'class',
+    'interface',
+    'enum',
+    'function',
+    'method',
+    'property',
+    'variable',
+    'parameter',
+    'type',
+    'variable', // constant mapped to variable
+    'keyword'
   ];
   const legend = new vscode.SemanticTokensLegend(tokenTypes, []);
   const registration = vscode.languages.registerDocumentSemanticTokensProvider('php', {
@@ -2382,9 +2406,9 @@ function createPhpSemanticTokensProvider() {
         const idx = match.index + match[0].lastIndexOf(name);
         const pos = document.positionAt(idx);
         const type =
-          kw === 'interface' ? vscode.SemanticTokenTypes.interface :
-          kw === 'enum' ? vscode.SemanticTokenTypes.enum :
-          vscode.SemanticTokenTypes.class;
+          kw === 'interface' ? 'interface' :
+          kw === 'enum' ? 'enum' :
+          'class';
         builder.push(pos.line, pos.character, name.length, tokenTypes.indexOf(type), 0);
       }
 
@@ -2393,21 +2417,21 @@ function createPhpSemanticTokensProvider() {
         const name = match[1];
         const idx = match.index + match[0].lastIndexOf(name);
         const pos = document.positionAt(idx);
-        builder.push(pos.line, pos.character, name.length, tokenTypes.indexOf(vscode.SemanticTokenTypes.function), 0);
+        builder.push(pos.line, pos.character, name.length, tokenTypes.indexOf('function'), 0);
       }
 
       const variableRe = /\$[A-Za-z_\x80-\xff][\w\x80-\xff]*/g;
       while ((match = variableRe.exec(text))) {
         const name = match[0];
         const pos = document.positionAt(match.index);
-        builder.push(pos.line, pos.character, name.length, tokenTypes.indexOf(vscode.SemanticTokenTypes.variable), 0);
+        builder.push(pos.line, pos.character, name.length, tokenTypes.indexOf('variable'), 0);
       }
 
       const constRe = /\b[A-Z_][A-Z0-9_]{2,}\b/g;
       while ((match = constRe.exec(text))) {
         const name = match[0];
         const pos = document.positionAt(match.index);
-        builder.push(pos.line, pos.character, name.length, tokenTypes.indexOf(vscode.SemanticTokenTypes.constant), 0);
+        builder.push(pos.line, pos.character, name.length, tokenTypes.indexOf('variable'), 0);
       }
 
       const dqlCallRe = /\bcreateQuery\s*\(\s*(['"])([\s\S]*?)\1/g;
@@ -2422,7 +2446,7 @@ function createPhpSemanticTokensProvider() {
           const k = m[0];
           const abs = queryStartIndex + m.index;
           const pos = document.positionAt(abs);
-          builder.push(pos.line, pos.character, k.length, tokenTypes.indexOf(vscode.SemanticTokenTypes.keyword), 0);
+          builder.push(pos.line, pos.character, k.length, tokenTypes.indexOf('keyword'), 0);
         }
 
         const namedParamRe = /:[A-Za-z_][A-Za-z0-9_]*/g;
@@ -2430,7 +2454,7 @@ function createPhpSemanticTokensProvider() {
           const p = m[0];
           const abs = queryStartIndex + m.index;
           const pos = document.positionAt(abs);
-          builder.push(pos.line, pos.character, p.length, tokenTypes.indexOf(vscode.SemanticTokenTypes.parameter), 0);
+          builder.push(pos.line, pos.character, p.length, tokenTypes.indexOf('parameter'), 0);
         }
 
         const positionalParamRe = /\?[0-9]+/g;
@@ -2438,7 +2462,7 @@ function createPhpSemanticTokensProvider() {
           const p = m[0];
           const abs = queryStartIndex + m.index;
           const pos = document.positionAt(abs);
-          builder.push(pos.line, pos.character, p.length, tokenTypes.indexOf(vscode.SemanticTokenTypes.parameter), 0);
+          builder.push(pos.line, pos.character, p.length, tokenTypes.indexOf('parameter'), 0);
         }
       }
 
