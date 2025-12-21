@@ -5,156 +5,55 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 
-const phpKeywords = [
-  'abstract', 'and', 'array', 'as', 'break', 'callable', 'case', 'catch',
-  'class', 'clone', 'const', 'continue', 'declare', 'default', 'die', 'do',
-  'echo', 'else', 'elseif', 'empty', 'enddeclare', 'endfor', 'endforeach',
-  'endif', 'endswitch', 'endwhile', 'eval', 'exit', 'extends', 'final',
-  'finally', 'fn', 'for', 'foreach', 'function', 'global', 'goto', 'if',
-  'implements', 'include', 'include_once', 'instanceof', 'insteadof',
-  'interface', 'isset', 'list', 'match', 'namespace', 'new', 'or', 'print',
-  'private', 'protected', 'public', 'readonly', 'require', 'require_once',
-  'return', 'static', 'switch', 'throw', 'trait', 'try', 'unset', 'use',
-  'var', 'while', 'xor', 'yield', 'enum'
-];
+// Import modularized data and utilities for better performance
+const phpData = require('./lib/php-data');
+const phpUtils = require('./lib/php-utils');
+const { Debouncer } = require('./lib/debouncer');
 
-const phpFunctions = {
-  'Array Functions': ['array_change_key_case', 'array_chunk', 'array_column', 'array_combine', 'array_count_values', 'array_diff', 'array_diff_assoc', 'array_diff_key', 'array_diff_uassoc', 'array_diff_ukey', 'array_fill', 'array_fill_keys', 'array_filter', 'array_flip', 'array_intersect', 'array_intersect_assoc', 'array_intersect_key', 'array_intersect_uassoc', 'array_intersect_ukey', 'array_key_exists', 'array_key_first', 'array_key_last', 'array_keys', 'array_map', 'array_merge', 'array_merge_recursive', 'array_multisort', 'array_pad', 'array_pop', 'array_product', 'array_push', 'array_rand', 'array_reduce', 'array_replace', 'array_replace_recursive', 'array_reverse', 'array_search', 'array_shift', 'array_slice', 'array_splice', 'array_sum', 'array_udiff', 'array_udiff_assoc', 'array_udiff_uassoc', 'array_uintersect', 'array_uintersect_assoc', 'array_uintersect_uassoc', 'array_unique', 'array_unshift', 'array_values', 'array_walk', 'array_walk_recursive', 'arsort', 'asort', 'compact', 'count', 'current', 'end', 'extract', 'in_array', 'key', 'krsort', 'ksort', 'natcasesort', 'natsort', 'next', 'prev', 'range', 'reset', 'rsort', 'shuffle', 'sizeof', 'sort', 'uasort', 'uksort', 'usort'],
-  'String Functions': ['addcslashes', 'addslashes', 'bin2hex', 'chop', 'chr', 'chunk_split', 'convert_uudecode', 'convert_uuencode', 'crc32', 'explode', 'get_html_translation_table', 'hebrev', 'hebrevc', 'hex2bin', 'html_entity_decode', 'htmlentities', 'htmlspecialchars', 'htmlspecialchars_decode', 'implode', 'join', 'lcfirst', 'levenshtein', 'localeconv', 'ltrim', 'md5', 'md5_file', 'metaphone', 'nl2br', 'number_format', 'ord', 'parse_str', 'print', 'printf', 'quoted_printable_decode', 'quoted_printable_encode', 'rtrim', 'sha1', 'sha1_file', 'similar_text', 'soundex', 'sprintf', 'sscanf', 'str_contains', 'str_ends_with', 'str_getcsv', 'str_ireplace', 'str_pad', 'str_repeat', 'str_replace', 'str_rot13', 'str_shuffle', 'str_split', 'str_starts_with', 'str_word_count', 'strcasecmp', 'strchr', 'strcmp', 'strcspn', 'strip_tags', 'stripcslashes', 'stripos', 'stripslashes', 'stristr', 'strlen', 'strnatcasecmp', 'strnatcmp', 'strncasecmp', 'strncmp', 'strpbrk', 'strpos', 'strrchr', 'strrev', 'strripos', 'strrpos', 'strspn', 'strstr', 'strtok', 'strtolower', 'strtoupper', 'strtr', 'substr', 'substr_compare', 'substr_count', 'substr_replace', 'trim', 'ucfirst', 'ucwords', 'wordwrap'],
-  'File System': ['basename', 'chgrp', 'chmod', 'chown', 'clearstatcache', 'copy', 'dirname', 'disk_free_space', 'disk_total_space', 'fclose', 'feof', 'fflush', 'fgetc', 'fgetcsv', 'fgets', 'file', 'file_exists', 'file_get_contents', 'file_put_contents', 'fileatime', 'filectime', 'filegroup', 'fileinode', 'filemtime', 'fileowner', 'fileperms', 'filesize', 'filetype', 'flock', 'fnmatch', 'fopen', 'fpassthru', 'fread', 'fseek', 'ftell', 'ftruncate', 'fwrite', 'glob', 'is_dir', 'is_executable', 'is_file', 'is_link', 'is_readable', 'is_uploaded_file', 'is_writable', 'link', 'linkinfo', 'lstat', 'mkdir', 'move_uploaded_file', 'opendir', 'pathinfo', 'pclose', 'popen', 'readfile', 'readdir', 'readlink', 'realpath', 'realpath_cache_get', 'realpath_cache_size', 'rename', 'rewind', 'rewinddir', 'rmdir', 'scandir', 'stat', 'symlink', 'sys_get_temp_dir', 'tempnam', 'tmpfile', 'touch', 'umask', 'unlink'],
-  'Date/Time': ['checkdate', 'date', 'date_add', 'date_create', 'date_create_from_format', 'date_default_timezone_get', 'date_default_timezone_set', 'date_diff', 'date_format', 'date_get_last_errors', 'date_parse', 'date_parse_from_format', 'date_sub', 'date_sun_info', 'date_sunrise', 'date_sunset', 'date_timestamp_get', 'date_timestamp_set', 'getdate', 'gettimeofday', 'gmdate', 'gmmktime', 'hrtime', 'idate', 'microtime', 'mktime', 'strftime', 'strtotime', 'time', 'timezone_identifiers_list', 'timezone_location_get', 'timezone_name_get', 'timezone_offset_get', 'timezone_open', 'timezone_transitions_get', 'timezone_version_get'],
-  'JSON': ['json_decode', 'json_encode', 'json_last_error', 'json_last_error_msg'],
-  'Session': ['session_abort', 'session_cache_expire', 'session_cache_limiter', 'session_commit', 'session_create_id', 'session_decode', 'session_destroy', 'session_encode', 'session_get_cookie_params', 'session_id', 'session_name', 'session_regenerate_id', 'session_reset', 'session_save_path', 'session_set_cookie_params', 'session_set_save_handler', 'session_start', 'session_status', 'session_unset', 'session_write_close'],
-  'Database (MySQLi)': ['mysqli_affected_rows', 'mysqli_autocommit', 'mysqli_begin_transaction', 'mysqli_change_user', 'mysqli_close', 'mysqli_commit', 'mysqli_connect', 'mysqli_connect_errno', 'mysqli_connect_error', 'mysqli_data_seek', 'mysqli_dump_debug_info', 'mysqli_errno', 'mysqli_error', 'mysqli_fetch_all', 'mysqli_fetch_array', 'mysqli_fetch_assoc', 'mysqli_fetch_field', 'mysqli_fetch_field_direct', 'mysqli_fetch_fields', 'mysqli_fetch_lengths', 'mysqli_fetch_object', 'mysqli_fetch_row', 'mysqli_field_count', 'mysqli_field_seek', 'mysqli_free_result', 'mysqli_get_client_info', 'mysqli_get_connection_stats', 'mysqli_get_host_info', 'mysqli_get_proto_info', 'mysqli_get_server_info', 'mysqli_info', 'mysqli_init', 'mysqli_insert_id', 'mysqli_more_results', 'mysqli_multi_query', 'mysqli_next_result', 'mysqli_num_fields', 'mysqli_num_rows', 'mysqli_options', 'mysqli_ping', 'mysqli_prepare', 'mysqli_query', 'mysqli_real_escape_string', 'mysqli_real_query', 'mysqli_rollback', 'mysqli_select_db', 'mysqli_set_charset', 'mysqli_sqlstate', 'mysqli_stat', 'mysqli_stmt_affected_rows', 'mysqli_stmt_bind_param', 'mysqli_stmt_bind_result', 'mysqli_stmt_close', 'mysqli_stmt_error', 'mysqli_stmt_errno', 'mysqli_stmt_execute', 'mysqli_stmt_fetch', 'mysqli_stmt_get_result', 'mysqli_stmt_init', 'mysqli_stmt_num_rows', 'mysqli_stmt_result_metadata', 'mysqli_stmt_store_result', 'mysqli_store_result', 'mysqli_thread_id', 'mysqli_use_result', 'mysqli_warning_count'],
-  'Password': ['password_algos', 'password_get_info', 'password_hash', 'password_needs_rehash', 'password_verify'],
-  'Math': ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atan2', 'atanh', 'base_convert', 'bindec', 'ceil', 'cos', 'cosh', 'decbin', 'dechex', 'decoct', 'deg2rad', 'exp', 'expm1', 'floor', 'fmod', 'fdiv', 'hexdec', 'hypot', 'intdiv', 'is_finite', 'is_infinite', 'is_nan', 'lcg_value', 'log', 'log10', 'log1p', 'max', 'min', 'octdec', 'pi', 'pow', 'rad2deg', 'rand', 'random_bytes', 'random_int', 'round', 'sin', 'sinh', 'sqrt', 'tan', 'tanh'],
-  'Variable/Type': ['boolval', 'class_alias', 'class_exists', 'class_implements', 'class_parents', 'constant', 'defined', 'doubleval', 'floatval', 'function_exists', 'get_called_class', 'get_class', 'get_class_methods', 'get_class_vars', 'get_declared_classes', 'get_declared_interfaces', 'get_declared_traits', 'get_defined_constants', 'get_defined_functions', 'get_defined_vars', 'get_object_vars', 'get_parent_class', 'get_resource_id', 'get_resource_type', 'gettype', 'intval', 'interface_exists', 'is_array', 'is_bool', 'is_callable', 'is_countable', 'is_double', 'is_float', 'is_int', 'is_integer', 'is_iterable', 'is_long', 'is_null', 'is_numeric', 'is_object', 'is_resource', 'is_scalar', 'is_string', 'method_exists', 'property_exists', 'settype', 'strval', 'trait_exists'],
-  'Environment': ['connection_aborted', 'connection_status', 'connection_timeout', 'constant', 'define', 'defined', 'get_cfg_var', 'get_current_user', 'getcwd', 'getenv', 'gethostname', 'getmypid', 'getmyuid', 'getmygid', 'getmyinode', 'getlastmod', 'getopt', 'getrusage', 'ini_get', 'ini_get_all', 'ini_restore', 'ini_set', 'memory_get_peak_usage', 'memory_get_usage', 'php_sapi_name', 'php_uname', 'phpversion', 'putenv', 'set_time_limit', 'sleep', 'sys_getloadavg', 'usleep', 'uniqid'],
-  'URL/HTTP': ['base64_decode', 'base64_encode', 'get_headers', 'header', 'header_remove', 'headers_list', 'headers_sent', 'http_build_query', 'parse_url', 'rawurldecode', 'rawurlencode', 'setcookie', 'urldecode', 'urlencode'],
-  'cURL': ['curl_close', 'curl_copy_handle', 'curl_errno', 'curl_error', 'curl_escape', 'curl_exec', 'curl_getinfo', 'curl_init', 'curl_multi_add_handle', 'curl_multi_close', 'curl_multi_exec', 'curl_multi_getcontent', 'curl_multi_init', 'curl_multi_remove_handle', 'curl_multi_select', 'curl_pause', 'curl_reset', 'curl_setopt', 'curl_setopt_array', 'curl_share_close', 'curl_share_init', 'curl_share_setopt', 'curl_strerror', 'curl_unescape', 'curl_version'],
-  'Hashing/Crypto': ['crypt', 'hash', 'hash_algos', 'hash_copy', 'hash_file', 'hash_final', 'hash_hkdf', 'hash_hmac', 'hash_hmac_file', 'hash_init', 'hash_pbkdf2', 'hash_update', 'hash_update_file', 'hash_update_stream', 'md5', 'md5_file', 'sha1', 'sha1_file'],
-  'OpenSSL': ['openssl_cipher_iv_length', 'openssl_decrypt', 'openssl_digest', 'openssl_encrypt', 'openssl_error_string', 'openssl_get_cert_locations', 'openssl_open', 'openssl_pkcs7_decrypt', 'openssl_pkcs7_encrypt', 'openssl_pkcs7_read', 'openssl_pkcs7_sign', 'openssl_pkcs7_verify', 'openssl_pkey_export', 'openssl_pkey_export_to_file', 'openssl_pkey_free', 'openssl_pkey_get_private', 'openssl_pkey_get_public', 'openssl_pkey_new', 'openssl_private_decrypt', 'openssl_private_encrypt', 'openssl_public_decrypt', 'openssl_public_encrypt', 'openssl_random_pseudo_bytes', 'openssl_seal', 'openssl_sign', 'openssl_verify', 'openssl_x509_checkpurpose', 'openssl_x509_fingerprint', 'openssl_x509_free', 'openssl_x509_parse', 'openssl_x509_read'],
-  'Multibyte (mbstring)': ['mb_check_encoding', 'mb_chr', 'mb_convert_case', 'mb_convert_encoding', 'mb_convert_kana', 'mb_convert_variables', 'mb_decode_mimeheader', 'mb_decode_numericentity', 'mb_detect_encoding', 'mb_detect_order', 'mb_encode_mimeheader', 'mb_encode_numericentity', 'mb_ereg', 'mb_ereg_match', 'mb_ereg_replace', 'mb_ereg_search', 'mb_ereg_search_getpos', 'mb_ereg_search_getregs', 'mb_ereg_search_init', 'mb_ereg_search_pos', 'mb_ereg_search_regs', 'mb_ereg_search_setpos', 'mb_get_info', 'mb_http_input', 'mb_http_output', 'mb_internal_encoding', 'mb_language', 'mb_list_encodings', 'mb_ord', 'mb_output_handler', 'mb_parse_str', 'mb_regex_encoding', 'mb_send_mail', 'mb_split', 'mb_strcut', 'mb_strimwidth', 'mb_strlen', 'mb_strpos', 'mb_strrpos', 'mb_strtolower', 'mb_strtoupper', 'mb_strwidth', 'mb_substitute_character', 'mb_substr', 'mb_substr_count'],
-  'Filter': ['filter_has_var', 'filter_id', 'filter_input', 'filter_input_array', 'filter_list', 'filter_var', 'filter_var_array'],
-  'Streams': ['stream_bucket_append', 'stream_bucket_make_writeable', 'stream_bucket_new', 'stream_bucket_prepend', 'stream_context_create', 'stream_context_get_default', 'stream_context_get_options', 'stream_context_get_params', 'stream_context_set_default', 'stream_context_set_option', 'stream_context_set_params', 'stream_copy_to_stream', 'stream_filter_append', 'stream_filter_prepend', 'stream_filter_register', 'stream_get_contents', 'stream_get_filters', 'stream_get_line', 'stream_get_meta_data', 'stream_get_transports', 'stream_get_wrappers', 'stream_is_local', 'stream_notification_callback', 'stream_resolve_include_path', 'stream_select', 'stream_set_blocking', 'stream_set_chunk_size', 'stream_set_read_buffer', 'stream_set_timeout', 'stream_set_write_buffer', 'stream_socket_accept', 'stream_socket_client', 'stream_socket_get_name', 'stream_socket_pair', 'stream_socket_recvfrom', 'stream_socket_sendto', 'stream_socket_server', 'stream_socket_shutdown'],
-  'SPL': ['class_uses', 'iterator_apply', 'iterator_count', 'iterator_to_array', 'spl_autoload', 'spl_autoload_call', 'spl_autoload_extensions', 'spl_autoload_functions', 'spl_autoload_register', 'spl_autoload_unregister', 'spl_classes', 'spl_object_hash', 'spl_object_id'],
-  'Serialization': ['serialize', 'unserialize'],
-  'Tokenizer': ['token_get_all', 'token_name'],
-  'Regular Expressions': ['preg_filter', 'preg_grep', 'preg_last_error', 'preg_last_error_msg', 'preg_match', 'preg_match_all', 'preg_quote', 'preg_replace', 'preg_replace_callback', 'preg_replace_callback_array', 'preg_split'],
-  'Output Control': ['flush', 'ob_clean', 'ob_end_clean', 'ob_end_flush', 'ob_flush', 'ob_get_clean', 'ob_get_contents', 'ob_get_flush', 'ob_get_length', 'ob_get_level', 'ob_get_status', 'ob_gzhandler', 'ob_implicit_flush', 'ob_list_handlers', 'ob_start', 'output_add_rewrite_var', 'output_reset_rewrite_vars'],
-  'Error/Debug': ['assert', 'assert_options', 'debug_backtrace', 'debug_print_backtrace', 'error_clear_last', 'error_get_last', 'error_log', 'error_reporting', 'restore_error_handler', 'restore_exception_handler', 'set_error_handler', 'set_exception_handler', 'trigger_error', 'var_dump', 'var_export', 'print_r']
-};
+// Destructure commonly used items from modules
+const {
+  phpKeywords,
+  phpFunctions,
+  phpFunctionCategoryOrder,
+  phpMagicMethods: phpMagicMethodsBase,
+  phpConstants: phpConstantsBase,
+  phpSnippets: phpSnippetsBase
+} = phpData;
 
-const phpFunctionCategoryOrder = [
-  'Array Functions',
-  'String Functions',
-  'Regular Expressions',
-  'Math',
-  'Date/Time',
-  'File System',
-  'Streams',
-  'URL/HTTP',
-  'JSON',
-  'Session',
-  'Database (MySQLi)',
-  'Password',
-  'Hashing/Crypto',
-  'OpenSSL',
-  'Multibyte (mbstring)',
-  'Filter',
-  'Serialization',
-  'Tokenizer',
-  'SPL',
-  'Variable/Type',
-  'Environment',
-  'Output Control',
-  'Error/Debug'
-];
+const {
+  findMatchingBrace,
+  escapeRegExp,
+  getPhpNamespace,
+  findEnclosingPhpClassName,
+  findPhpClassMemberRange,
+  resolvePhpClassTokenInDocument,
+  parsePhpUseAliases,
+  parsePhpClassExtendsImplements,
+  resolvePhpTypeTokenToFqn,
+  findPhpDocblockBeforeOffset,
+  parsePhpDocblock,
+  splitPhpParameters,
+  parsePhpParameter,
+  extractPhpFunctionSignatureNearOffset,
+  countPhpActiveParameter,
+  runPhpLint,
+  parsePhpLintOutput,
+  runPhpReflectionForFunction
+} = phpUtils;
 
-function normalizePhpFunctionsByCategory(source, preferredOrder) {
-  const seen = new Set();
-  const normalized = Object.create(null);
-  const categories = [];
-  const pushed = new Set();
-  for (const category of preferredOrder) {
-    if (!pushed.has(category)) {
-      categories.push(category);
-      pushed.add(category);
-    }
-  }
-  for (const category of Object.keys(source).sort((a, b) => a.localeCompare(b))) {
-    if (!pushed.has(category)) {
-      categories.push(category);
-      pushed.add(category);
-    }
-  }
+// Create local aliases for backwards compatibility
+const phpMagicMethods = phpMagicMethodsBase;
+const phpConstants = phpConstantsBase;
+const phpSnippets = phpSnippetsBase;
 
-  for (const category of categories) {
-    const funcs = source[category];
-    if (!Array.isArray(funcs) || funcs.length === 0) continue;
-    const sortedUnique = Array.from(new Set(funcs)).sort((a, b) => a.localeCompare(b));
-    const filtered = sortedUnique.filter((fn) => {
-      if (seen.has(fn)) return false;
-      seen.add(fn);
-      return true;
-    });
-    if (filtered.length > 0) normalized[category] = filtered;
-  }
-
-  return normalized;
-}
-
-const phpFunctionsByCategory = normalizePhpFunctionsByCategory(phpFunctions, phpFunctionCategoryOrder);
-const phpFunctionCategoryByName = (() => {
-  const map = Object.create(null);
-  for (const [category, functions] of Object.entries(phpFunctionsByCategory)) {
-    for (const fn of functions) map[fn] = category;
-  }
-  return map;
-})();
-
-const extensionName = ' (PHP Enhanced Pro)';
-
-const phpSnippets = {
-  'class': { prefix: ['class', 'cl', 'cls'], body: ['class ${1:ClassName}', '{', '\tprivate ${2:\\$property};', '', '\tpublic function __construct(${3:\\$param})', '\t{', '\t\t\\$this->${2:property} = ${3:\\$param};', '\t}', '', '\tpublic function ${4:methodName}()', '\t{', '\t\t${5:// method body}', '\t}', '}'], description: 'Create a PHP Class' + extensionName },
-  'enum': { prefix: ['enum', 'en'], body: ['enum ${1:EnumName}: ${2:string}', '{', '\tcase ${3:CASE_ONE} = \'${4:value1}\';', '\tcase ${5:CASE_TWO} = \'${6:value2}\';', '}'], description: 'Create a PHP Enum (PHP 8.1+)' + extensionName },
-  'interface': { prefix: ['interface', 'int'], body: ['interface ${1:InterfaceName}', '{', '\tpublic function ${2:methodName}(${3:\\$params}): ${4:void};', '}'], description: 'Create a PHP Interface' + extensionName },
-  'trait': { prefix: ['trait', 'tr'], body: ['trait ${1:TraitName}', '{', '\tpublic function ${2:methodName}()', '\t{', '\t\t${3:// method body}', '\t}', '}'], description: 'Create a PHP Trait' + extensionName },
-  'abstract': { prefix: ['abstract', 'abs', 'abscl'], body: ['abstract class ${1:AbstractClass}', '{', '\tabstract public function ${2:methodName}(${3:\\$params}): ${4:void};', '', '\tpublic function ${5:concreteMethod}()', '\t{', '\t\t${6:// method body}', '\t}', '}'], description: 'Create an Abstract Class' + extensionName },
-  'function': { prefix: ['function', 'func', 'fn', 'fun'], body: ['function ${1:functionName}(${2:\\$params}): ${3:void}', '{', '\t${4:// function body}', '}'], description: 'Create a PHP function' + extensionName },
-  'foreach': { prefix: ['foreach', 'fe', 'fore', 'each'], body: ['foreach (${1:\\$array} as ${2:\\$key} => ${3:\\$value}) {', '\t${4:// code}', '}'], description: 'Foreach loop' + extensionName },
-  'for': { prefix: ['for', 'forloop'], body: ['for (${1:\\$i} = ${2:0}; ${1:\\$i} < ${3:count}; ${1:\\$i}++) {', '\t${4:// code}', '}'], description: 'For loop' + extensionName },
-  'while': { prefix: ['while', 'wh'], body: ['while (${1:condition}) {', '\t${2:// code}', '}'], description: 'While loop' + extensionName },
-  'if': { prefix: ['if', 'iff'], body: ['if (${1:condition}) {', '\t${2:// code}', '}'], description: 'If statement' + extensionName },
-  'ifelse': { prefix: ['ifelse', 'ife', 'ifelsee'], body: ['if (${1:condition}) {', '\t${2:// code}', '} else {', '\t${3:// code}', '}'], description: 'If-else statement' + extensionName },
-  'elseif': { prefix: ['elseif', 'elif'], body: ['if (${1:condition}) {', '\t${2:// code}', '} elseif (${3:condition}) {', '\t${4:// code}', '} else {', '\t${5:// code}', '}'], description: 'If-elseif-else statement' + extensionName },
-  'switch': { prefix: ['switch', 'sw'], body: ['switch (${1:expression}) {', '\tcase ${2:value}:', '\t\t${3:// code}', '\t\tbreak;', '\tdefault:', '\t\t${4:// code}', '}'], description: 'Switch statement' + extensionName },
-  'trycatch': { prefix: ['try', 'trycatch', 'tc'], body: ['try {', '\t${1:// code}', '} catch (${2:Exception} ${3:\\$e}) {', '\t${4:// handle exception}', '}'], description: 'Try-Catch block' + extensionName },
-  'trycatchfinally': { prefix: ['tryfinally', 'tcf'], body: ['try {', '\t${1:// code}', '} catch (${2:Exception} ${3:\\$e}) {', '\t${4:// handle exception}', '} finally {', '\t${5:// cleanup code}', '}'], description: 'Try-Catch-Finally block' + extensionName },
-  'construct': { prefix: ['construct', 'cons', '__construct'], body: ['public function __construct(${1:\\$params})', '{', '\t${2:// constructor body}', '}'], description: 'Constructor method' + extensionName },
-  'destruct': { prefix: ['destruct', 'dest', '__destruct'], body: ['public function __destruct()', '{', '\t${1:// destructor body}', '}'], description: 'Destructor method' + extensionName },
-  'prop': { prefix: ['prop', 'property', 'priv'], body: ['private ${1:type} \\$${2:name};'], description: 'Private property' + extensionName },
-  'pubprop': { prefix: ['pubprop', 'pp'], body: ['public ${1:type} \\$${2:name};'], description: 'Public property' + extensionName },
-  'proprop': { prefix: ['proprop', 'protected'], body: ['protected ${1:type} \\$${2:name};'], description: 'Protected property' + extensionName },
-  'pubfn': { prefix: ['pubfn', 'publicfn', 'pubf'], body: ['public function ${1:methodName}(${2:\\$params}): ${3:void}', '{', '\t${4:// code}', '}'], description: 'Public Method' + extensionName },
-  'prifn': { prefix: ['prifn', 'privatefn', 'prif'], body: ['private function ${1:methodName}(${2:\\$params}): ${3:void}', '{', '\t${4:// code}', '}'], description: 'Private Method' + extensionName },
-  'profn': { prefix: ['profn', 'protectedfn', 'prof'], body: ['protected function ${1:methodName}(${2:\\$params}): ${3:void}', '{', '\t${4:// code}', '}'], description: 'Protected Method' + extensionName },
-  'staticfn': { prefix: ['staticfn', 'static', 'stfn'], body: ['public static function ${1:methodName}(${2:\\$params}): ${3:void}', '{', '\t${4:// code}', '}'], description: 'Static Method' + extensionName },
-  'getter': { prefix: ['getter', 'get'], body: ['public function get${1:Property}(): ${2:type}', '{', '\treturn \\$this->${3:property};', '}'], description: 'Getter method' + extensionName },
-  'setter': { prefix: ['setter', 'set'], body: ['public function set${1:Property}(${2:type} \\$${3:value}): void', '{', '\t\\$this->${3:value} = \\$${3:value};', '}'], description: 'Setter method' + extensionName },
-  'namespace': { prefix: ['namespace', 'ns'], body: ['namespace ${1:Vendor\\\\Package};'], description: 'Namespace declaration' + extensionName },
-  'use': { prefix: ['use', 'import'], body: ['use ${1:Vendor\\\\Package\\\\ClassName};'], description: 'Use/import statement' + extensionName },
-  'echo': { prefix: ['echo', 'ec'], body: ['echo ${1:"output"};'], description: 'Echo statement' + extensionName },
-  'var_dump': { prefix: ['var_dump', 'vd', 'dump'], body: ['var_dump(${1:\\$variable});'], description: 'Var dump' + extensionName },
-  'print_r': { prefix: ['print_r', 'pr'], body: ['print_r(${1:\\$variable});'], description: 'Print array' + extensionName },
-  'die': { prefix: ['die', 'exit'], body: ['die(${1:"message"});'], description: 'Die/exit statement' + extensionName },
-  'const': { prefix: ['const', 'constant'], body: ['const ${1:CONSTANT_NAME} = ${2:value};'], description: 'Define constant' + extensionName },
-  'readonly': { prefix: ['readonly', 'ro'], body: ['public readonly ${1:type} \\$${2:name};'], description: 'Readonly property (PHP 8.1+)' + extensionName }
-};
-
-const phpMagicMethods = ['__construct', '__destruct', '__call', '__callStatic', '__get', '__set', '__isset', '__unset', '__sleep', '__wakeup', '__serialize', '__unserialize', '__toString', '__invoke', '__set_state', '__clone', '__debugInfo'];
-
-const phpConstants = ['PHP_VERSION', 'PHP_OS', 'PHP_EOL', 'PHP_INT_MAX', 'PHP_INT_MIN', 'true', 'false', 'null', 'TRUE', 'FALSE', 'NULL', '__LINE__', '__FILE__', '__DIR__', '__FUNCTION__', '__CLASS__', '__TRAIT__', '__METHOD__', '__NAMESPACE__'];
+// Build function categories and lookup
+const phpFunctionsByCategory = phpFunctions;
+const phpFunctionCategoryByName = {};
+Object.entries(phpFunctions).forEach(([category, functions]) => {
+  functions.forEach(func => {
+    phpFunctionCategoryByName[func] = category;
+  });
+});
 
 let diagnosticCollection;
 let lastPhpExecutableErrorAt = 0;
@@ -1381,6 +1280,60 @@ function createPhpMemberCompletionItems(classNameOrFqn, options) {
   return items;
 }
 
+function getPhpClassCompletionContext(linePrefix) {
+  // Check for 'new' keyword
+  const newMatch = linePrefix.match(/\bnew\s+([A-Za-z_\x80-\xff][\\\w\x80-\xff]*)?$/);
+  if (newMatch) return { kind: 'new', partial: newMatch[1] || '' };
+
+  // Check for 'extends' keyword
+  const extendsMatch = linePrefix.match(/\bextends\s+([A-Za-z_\x80-\xff][\\\w\x80-\xff]*)?$/);
+  if (extendsMatch) return { kind: 'extends', partial: extendsMatch[1] || '' };
+
+  // Check for 'implements' keyword
+  const implementsMatch = linePrefix.match(/\bimplements\s+([A-Za-z_\x80-\xff][\\\w\x80-\xff]*)?$/);
+  if (implementsMatch) return { kind: 'implements', partial: implementsMatch[1] || '' };
+
+  // Check for 'instanceof' keyword
+  const instanceofMatch = linePrefix.match(/\binstanceof\s+([A-Za-z_\x80-\xff][\\\w\x80-\xff]*)?$/);
+  if (instanceofMatch) return { kind: 'instanceof', partial: instanceofMatch[1] || '' };
+
+  // Check for 'use' statement
+  const useMatch = linePrefix.match(/\buse\s+([A-Za-z_\x80-\xff][\\\w\x80-\xff]*)?$/);
+  if (useMatch) return { kind: 'use', partial: useMatch[1] || '' };
+
+  return null;
+}
+
+function createPhpClassCompletionItems(document, position, classCtx) {
+  const items = [];
+  const seen = new Set();
+
+  const push = (name, detail, sortText) => {
+    if (seen.has(name)) return;
+    seen.add(name);
+    const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Class);
+    item.detail = detail;
+    item.sortText = sortText;
+    items.push(item);
+  };
+
+  // Get all classes from workspace index
+  for (const key of phpWorkspaceIndex.keys()) {
+    const keyStr = String(key);
+    const symbolInfo = phpWorkspaceSymbolInfo.get(keyStr);
+    if (!symbolInfo || symbolInfo.length === 0) continue;
+    const info = symbolInfo[0];
+    if (info.kind === vscode.SymbolKind.Class || info.kind === vscode.SymbolKind.Interface) {
+      const className = keyStr.includes('\\') ? keyStr.split('\\').pop() : keyStr;
+      push(className, info.kind === vscode.SymbolKind.Interface ? 'Interface' : 'Class', `0${className}`);
+      // Also add fully qualified name
+      push(keyStr, info.kind === vscode.SymbolKind.Interface ? 'Interface (FQN)' : 'Class (FQN)', `1${keyStr}`);
+    }
+  }
+
+  return items;
+}
+
 function getPhpReferenceAtPosition(document, position) {
   const range = document.getWordRangeAtPosition(position, /[\\A-Za-z_\x80-\xff][\\\w\x80-\xff]*/);
   if (!range) return;
@@ -1697,527 +1650,6 @@ function extractPhpSymbolsFromDocument(document) {
   }
 
   return symbols;
-}
-
-function findMatchingBrace(text, startIndex) {
-  let depth = 0;
-  for (let i = startIndex; i < text.length; i++) {
-    const ch = text[i];
-    if (ch === '{') depth++;
-    else if (ch === '}') {
-      depth--;
-      if (depth === 0) return i;
-    }
-  }
-  return -1;
-}
-
-function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function getPhpNamespace(text) {
-  const match = text.match(/^\s*namespace\s+([^;{]+)\s*[;{]/m);
-  if (!match) return '';
-  return match[1].trim();
-}
-
-function findEnclosingPhpClassName(document, position) {
-  const offset = document.offsetAt(position);
-  const head = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
-  const classRe = /\b(class|interface|trait|enum)\s+([A-Za-z_\x80-\xff][\w\x80-\xff]*)\b/g;
-  let match;
-  let last = null;
-  while ((match = classRe.exec(head))) last = match[2];
-  if (!last) return;
-  const idx = head.lastIndexOf(last, offset);
-  if (idx === -1) return last;
-  return last;
-}
-
-function findPhpClassMemberRange(text, className) {
-  const classRe = new RegExp(`\\b(class|interface|trait|enum)\\s+${escapeRegExp(className)}\\b`, 'g');
-  const match = classRe.exec(text);
-  if (!match) return;
-  const braceStart = text.indexOf('{', match.index);
-  if (braceStart === -1) return;
-  const braceEnd = findMatchingBrace(text, braceStart);
-  if (braceEnd === -1) return;
-  return { start: braceStart, end: braceEnd + 1 };
-}
-
-function resolvePhpClassTokenInDocument(text, classToken) {
-  if (!classToken || classToken.includes('\\')) return classToken;
-  const uses = parsePhpUseAliases(text);
-  return uses[classToken] || classToken;
-}
-
-function parsePhpUseAliases(text) {
-  const map = Object.create(null);
-  const useRe = /^\s*use\s+([^;]+);/gm;
-  let match;
-  while ((match = useRe.exec(text))) {
-    const clause = match[1].trim();
-    if (!clause) continue;
-    if (clause.startsWith('function ') || clause.startsWith('const ')) continue;
-    const parts = clause.split(',').map((p) => p.trim()).filter(Boolean);
-    for (const part of parts) {
-      const asMatch = part.match(/^(.*)\s+as\s+([A-Za-z_\x80-\xff][\w\x80-\xff]*)$/i);
-      const fqn = (asMatch ? asMatch[1] : part).trim().replace(/^\\+/, '');
-      const alias = (asMatch ? asMatch[2] : fqn.split('\\').pop()).trim();
-      if (alias && fqn) map[alias] = fqn;
-    }
-  }
-  return map;
-}
-
-function parsePhpClassExtendsImplements(header) {
-  const extendsMatch = header.match(/\bextends\s+([\\A-Za-z_\x80-\xff][\\\w\x80-\xff]*)/i);
-  const implementsMatch = header.match(/\bimplements\s+([^{]+)$/i);
-  const extendsList = extendsMatch ? [extendsMatch[1].trim()] : [];
-  const implementsList = implementsMatch
-    ? implementsMatch[1].split(',').map((s) => s.trim()).filter(Boolean).map((s) => s.replace(/\s*\{.*$/, '').trim())
-    : [];
-  return { extends: extendsList, implements: implementsList };
-}
-
-function resolvePhpTypeTokenToFqn(token, namespace, useAliases) {
-  const raw = String(token || '').trim();
-  if (!raw) return '';
-  const cleaned = raw.replace(/^\?/, '').replace(/^\\+/, '');
-  if (cleaned.includes('\\')) return cleaned;
-  const aliased = useAliases && useAliases[cleaned] ? useAliases[cleaned] : cleaned;
-  if (aliased.includes('\\')) return aliased.replace(/^\\+/, '');
-  if (namespace) return `${namespace}\\${aliased}`;
-  return aliased;
-}
-
-function rebuildPhpClassFqnMaps() {
-  phpWorkspaceClassFqnsByShortName.clear();
-  for (const [fqn, info] of phpWorkspaceClassInfoByFqn.entries()) {
-    if (!info || !info.shortName) continue;
-    const shortName = info.shortName;
-    const list = phpWorkspaceClassFqnsByShortName.get(shortName) || [];
-    if (!list.includes(fqn)) list.push(fqn);
-    phpWorkspaceClassFqnsByShortName.set(shortName, list);
-  }
-}
-
-function findPhpDocblockBeforeOffset(text, offset) {
-  const head = text.slice(0, Math.max(0, offset));
-  const end = head.lastIndexOf('*/');
-  if (end === -1) return '';
-  const start = head.lastIndexOf('/**', end);
-  if (start === -1) return '';
-  const between = head.slice(end + 2);
-  if (/[^\s]/.test(between)) return '';
-  return head.slice(start, end + 2);
-}
-
-function parsePhpDocblock(docblock) {
-  const result = { params: Object.create(null), returns: '' };
-  if (!docblock) return result;
-  const lines = String(docblock).split(/\r?\n/);
-  for (const line of lines) {
-    const paramMatch = line.match(/@\s*(?:param|phpstan-param|psalm-param)\s+([^\s]+)\s+(\$[A-Za-z_\x80-\xff][\w\x80-\xff]*)/i);
-    if (paramMatch) result.params[paramMatch[2]] = paramMatch[1];
-    const returnMatch = line.match(/@\s*(?:return|phpstan-return|psalm-return)\s+([^\s]+)/i);
-    if (returnMatch && !result.returns) result.returns = returnMatch[1];
-  }
-  return result;
-}
-
-function splitPhpParameters(paramList) {
-  const parts = [];
-  let current = '';
-  let depthParen = 0;
-  let depthBracket = 0;
-  let depthBrace = 0;
-  let inSingle = false;
-  let inDouble = false;
-  let escape = false;
-  for (let i = 0; i < paramList.length; i++) {
-    const ch = paramList[i];
-    if (inSingle || inDouble) {
-      current += ch;
-      if (escape) {
-        escape = false;
-        continue;
-      }
-      if (ch === '\\') {
-        escape = true;
-        continue;
-      }
-      if (inSingle && ch === '\'') inSingle = false;
-      if (inDouble && ch === '"') inDouble = false;
-      continue;
-    }
-    if (ch === '\'') {
-      inSingle = true;
-      current += ch;
-      continue;
-    }
-    if (ch === '"') {
-      inDouble = true;
-      current += ch;
-      continue;
-    }
-    if (ch === '(') depthParen++;
-    else if (ch === ')') depthParen = Math.max(0, depthParen - 1);
-    else if (ch === '[') depthBracket++;
-    else if (ch === ']') depthBracket = Math.max(0, depthBracket - 1);
-    else if (ch === '{') depthBrace++;
-    else if (ch === '}') depthBrace = Math.max(0, depthBrace - 1);
-    if (ch === ',' && depthParen === 0 && depthBracket === 0 && depthBrace === 0) {
-      const trimmed = current.trim();
-      if (trimmed) parts.push(trimmed);
-      current = '';
-      continue;
-    }
-    current += ch;
-  }
-  const trimmed = current.trim();
-  if (trimmed) parts.push(trimmed);
-  return parts;
-}
-
-function parsePhpParameter(paramText, docParams) {
-  const text = String(paramText || '').trim();
-  if (!text) return null;
-  const nameMatch = text.match(/(\$[A-Za-z_\x80-\xff][\w\x80-\xff]*)/);
-  if (!nameMatch) return null;
-  const name = nameMatch[1];
-  const before = text.slice(0, nameMatch.index).trim();
-  const hasVariadic = /\.\.\./.test(before);
-  const cleanBefore = before.replace(/\.\.\./g, '').replace(/\s*&\s*/g, ' ').trim();
-  const typeText = cleanBefore ? cleanBefore.split(/\s+/)[0] : '';
-  const docType = docParams && docParams[name] ? docParams[name] : '';
-  const type = typeText || docType || 'mixed';
-  return { name, type, variadic: hasVariadic, raw: text };
-}
-
-function extractPhpFunctionSignatureNearOffset(text, nameIndex) {
-  const sliceStart = Math.max(0, nameIndex - 800);
-  const sliceEnd = Math.min(text.length, nameIndex + 800);
-  const window = text.slice(sliceStart, sliceEnd);
-  const localIndex = nameIndex - sliceStart;
-  const head = window.slice(0, localIndex + 200);
-  const declMatch = head.match(/\bfunction\s+&?\s*([A-Za-z_\x80-\xff][\w\x80-\xff]*)\s*\(([\s\S]*?)\)\s*(?::\s*([\\A-Za-z_\x80-\xff][\\\w\x80-\xff|?]+))?/);
-  if (!declMatch) return null;
-  const fnName = declMatch[1];
-  const paramList = declMatch[2] || '';
-  const returnTypeHint = (declMatch[3] || '').trim();
-  const docblock = findPhpDocblockBeforeOffset(text, nameIndex);
-  const doc = parsePhpDocblock(docblock);
-  const params = splitPhpParameters(paramList).map((p) => parsePhpParameter(p, doc.params)).filter(Boolean);
-  const returnType = returnTypeHint || doc.returns || 'mixed';
-  const formattedParams = params.map((p) => `${p.type} ${p.variadic ? '...' : ''}${p.name}`.replace(/\s+/g, ' ').trim());
-  const label = `${fnName}(${formattedParams.join(', ')}): ${returnType}`;
-  return {
-    label,
-    documentation: docblock ? new vscode.MarkdownString(docblock) : undefined,
-    parameters: params.map((p) => ({ label: `${p.type} ${p.variadic ? '...' : ''}${p.name}`.replace(/\s+/g, ' ').trim() }))
-  };
-}
-
-function getPhpCallExpressionAtPosition(document, position) {
-  const offset = document.offsetAt(position);
-  const startOffset = Math.max(0, offset - 5000);
-  const text = document.getText(new vscode.Range(document.positionAt(startOffset), position));
-  let depth = 0;
-  let callParenIndex = -1;
-  for (let i = text.length - 1; i >= 0; i--) {
-    const ch = text[i];
-    if (ch === ')') depth++;
-    else if (ch === '(') {
-      if (depth === 0) {
-        callParenIndex = i;
-        break;
-      }
-      depth--;
-    }
-  }
-  if (callParenIndex === -1) return null;
-  const before = text.slice(0, callParenIndex).replace(/\s+$/, '');
-  const activeParameter = countPhpActiveParameter(text.slice(callParenIndex + 1));
-
-  const staticMatch = before.match(/([\\A-Za-z_\x80-\xff][\\\w\x80-\xff]*)\s*::\s*([A-Za-z_\x80-\xff][\w\x80-\xff]*)$/);
-  if (staticMatch) return { kind: 'static', classToken: staticMatch[1], name: staticMatch[2], activeParameter };
-
-  const methodMatch = before.match(/(\$this|\$[A-Za-z_\x80-\xff][\w\x80-\xff]*)\s*->\s*([A-Za-z_\x80-\xff][\w\x80-\xff]*)$/);
-  if (methodMatch) return { kind: 'method', receiver: methodMatch[1], name: methodMatch[2], activeParameter };
-
-  const newMatch = before.match(/\bnew\s+([\\A-Za-z_\x80-\xff][\\\w\x80-\xff]*)$/);
-  if (newMatch) return { kind: 'new', classToken: newMatch[1], activeParameter };
-
-  const fnMatch = before.match(/([A-Za-z_\x80-\xff][\w\x80-\xff]*)$/);
-  if (fnMatch) return { kind: 'function', name: fnMatch[1], activeParameter };
-  return null;
-}
-
-function countPhpActiveParameter(argText) {
-  let depthParen = 0;
-  let depthBracket = 0;
-  let depthBrace = 0;
-  let inSingle = false;
-  let inDouble = false;
-  let escape = false;
-  let commas = 0;
-  for (let i = 0; i < argText.length; i++) {
-    const ch = argText[i];
-    if (inSingle || inDouble) {
-      if (escape) {
-        escape = false;
-        continue;
-      }
-      if (ch === '\\') {
-        escape = true;
-        continue;
-      }
-      if (inSingle && ch === '\'') inSingle = false;
-      if (inDouble && ch === '"') inDouble = false;
-      continue;
-    }
-    if (ch === '\'') { inSingle = true; continue; }
-    if (ch === '"') { inDouble = true; continue; }
-    if (ch === '(') depthParen++;
-    else if (ch === ')') depthParen = Math.max(0, depthParen - 1);
-    else if (ch === '[') depthBracket++;
-    else if (ch === ']') depthBracket = Math.max(0, depthBracket - 1);
-    else if (ch === '{') depthBrace++;
-    else if (ch === '}') depthBrace = Math.max(0, depthBrace - 1);
-    if (ch === ',' && depthParen === 0 && depthBracket === 0 && depthBrace === 0) commas++;
-  }
-  return commas;
-}
-
-async function resolvePhpSignatureForCall(document, position, call) {
-  if (!call) return [];
-  const text = document.getText();
-  const namespace = getPhpNamespace(text);
-  const useAliases = parsePhpUseAliases(text);
-
-  if (call.kind === 'function') {
-    const candidates = [];
-    if (namespace) candidates.push(`${namespace}\\${call.name}`);
-    candidates.push(call.name);
-    for (const key of candidates) {
-      const sigs = phpWorkspaceFunctionInfoByKey.get(key);
-      if (sigs && sigs.length > 0) return sigs;
-    }
-    if (phpFunctionCategoryByName[call.name]) {
-      const builtIn = await getBuiltInPhpFunctionSignature(call.name);
-      if (builtIn) return [builtIn];
-    }
-    return [];
-  }
-
-  if (call.kind === 'static') {
-    const resolvedClass = resolvePhpTypeTokenToFqn(call.classToken, namespace, useAliases);
-    const classShort = resolvedClass.split('\\').pop();
-    const keys = [
-      `${resolvedClass}::${call.name}`,
-      `${classShort}::${call.name}`
-    ];
-    for (const key of keys) {
-      const sigs = phpWorkspaceFunctionInfoByKey.get(key);
-      if (sigs && sigs.length > 0) return sigs;
-    }
-    return [];
-  }
-
-  if (call.kind === 'new') {
-    const resolvedClass = resolvePhpTypeTokenToFqn(call.classToken, namespace, useAliases);
-    const classShort = resolvedClass.split('\\').pop();
-    const keys = [
-      `${resolvedClass}::__construct`,
-      `${classShort}::__construct`
-    ];
-    for (const key of keys) {
-      const sigs = phpWorkspaceFunctionInfoByKey.get(key);
-      if (sigs && sigs.length > 0) return sigs;
-    }
-    return [];
-  }
-
-  if (call.kind === 'method') {
-    const receiver = call.receiver;
-    let receiverType = '';
-    if (receiver === '$this') receiverType = findEnclosingPhpClassName(document, position) || '';
-    if (!receiverType && receiver.startsWith('$')) {
-      const inferred = inferPhpVariableTypes(document, position);
-      receiverType = inferred.get(receiver) || '';
-    }
-    const resolvedType = resolvePhpTypeTokenToFqn(receiverType, namespace, useAliases);
-    const classShort = resolvedType.split('\\').pop();
-    const keys = [
-      `${resolvedType}::${call.name}`,
-      `${classShort}::${call.name}`
-    ];
-    for (const key of keys) {
-      const sigs = phpWorkspaceFunctionInfoByKey.get(key);
-      if (sigs && sigs.length > 0) return sigs;
-    }
-  }
-  return [];
-}
-
-function resolvePhpSignatureForReference(document, position, word) {
-  const reference = getPhpReferenceAtPosition(document, position);
-  const text = document.getText();
-  const namespace = getPhpNamespace(text);
-  const useAliases = parsePhpUseAliases(text);
-  const name = String(word || '').replace(/^\\+/, '');
-  if (!name) return [];
-
-  if (reference && reference.kind === 'static') {
-    const resolvedClass = resolvePhpTypeTokenToFqn(reference.classToken, namespace, useAliases);
-    const classShort = resolvedClass.split('\\').pop();
-    const keys = [`${resolvedClass}::${reference.member}`, `${classShort}::${reference.member}`];
-    for (const key of keys) {
-      const sigs = phpWorkspaceFunctionInfoByKey.get(key);
-      if (sigs && sigs.length > 0) return sigs;
-    }
-    return [];
-  }
-
-  if (reference && reference.kind === 'this') {
-    const className = findEnclosingPhpClassName(document, position);
-    if (className) {
-      const keys = [`${className}::${reference.member}`];
-      for (const key of keys) {
-        const sigs = phpWorkspaceFunctionInfoByKey.get(key);
-        if (sigs && sigs.length > 0) return sigs;
-      }
-    }
-    return [];
-  }
-
-  const candidates = [];
-  if (namespace) candidates.push(`${namespace}\\${name}`);
-  candidates.push(name);
-  for (const key of candidates) {
-    const sigs = phpWorkspaceFunctionInfoByKey.get(key);
-    if (sigs && sigs.length > 0) return sigs;
-  }
-  return [];
-}
-
-function getPhpClassCompletionContext(linePrefix) {
-  const prefix = String(linePrefix || '');
-  const mNew = prefix.match(/\bnew\s+([\\A-Za-z_\x80-\xff][\\\w\x80-\xff]*)?$/);
-  if (mNew) return { kind: 'new', typed: mNew[1] || '' };
-  const mExt = prefix.match(/\bextends\s+([\\A-Za-z_\x80-\xff][\\\w\x80-\xff]*)?$/);
-  if (mExt) return { kind: 'extends', typed: mExt[1] || '' };
-  const mImpl = prefix.match(/\bimplements\s+([\\A-Za-z_\x80-\xff][\\\w\x80-\xff]*)?$/);
-  if (mImpl) return { kind: 'implements', typed: mImpl[1] || '' };
-  const mCatch = prefix.match(/\bcatch\s*\(\s*([\\A-Za-z_\x80-\xff][\\\w\x80-\xff]*)?$/);
-  if (mCatch) return { kind: 'catch', typed: mCatch[1] || '' };
-  return null;
-}
-
-function createPhpClassCompletionItems(document, position, classCtx) {
-  const typed = String(classCtx && classCtx.typed ? classCtx.typed : '');
-  const typedTrim = typed.replace(/^\\+/, '');
-  const wantsFqn = typed.startsWith('\\');
-  const text = document.getText();
-  const namespace = getPhpNamespace(text);
-  const useAliases = parsePhpUseAliases(text);
-  const importedFqns = new Set(Object.values(useAliases || {}));
-
-  const items = [];
-  for (const [shortName, fqns] of phpWorkspaceClassFqnsByShortName.entries()) {
-    if (typedTrim && !shortName.toLowerCase().startsWith(typedTrim.toLowerCase())) continue;
-    for (const fqn of fqns) {
-      const label = wantsFqn ? `\\${fqn}` : shortName;
-      const item = new vscode.CompletionItem(label, vscode.CompletionItemKind.Class);
-      item.detail = fqn;
-      item.sortText = `0${shortName}`;
-      if (!wantsFqn) {
-        const shouldImport = fqn.includes('\\') && !importedFqns.has(fqn) && !(namespace && fqn.startsWith(`${namespace}\\`));
-        if (shouldImport) {
-          const insertPos = findPhpUseInsertPosition(document);
-          item.additionalTextEdits = [vscode.TextEdit.insert(insertPos, `use ${fqn};\n`)];
-        }
-        item.insertText = shortName;
-      } else {
-        item.insertText = `\\${fqn}`;
-      }
-      items.push(item);
-      if (items.length >= 120) return items;
-    }
-  }
-  return items;
-}
-
-async function getBuiltInPhpFunctionSignature(functionName) {
-  const config = vscode.workspace.getConfiguration('php');
-  const phpPath = config.get('executablePath', 'php');
-  const cacheKey = `${phpPath}::${functionName}`;
-  const cached = phpBuiltInFunctionSignatureCache.get(cacheKey);
-  if (cached) return cached;
-
-  const payload = await runPhpReflectionForFunction(phpPath, functionName);
-  if (!payload) return null;
-
-  const params = (payload.parameters || []).map((p) => {
-    const type = p.type || 'mixed';
-    const variadic = p.variadic ? '...' : '';
-    const byRef = p.byReference ? '&' : '';
-    const label = `${type} ${variadic}${byRef}$${p.name}`.replace(/\s+/g, ' ').trim();
-    return { label };
-  });
-  const returnType = payload.returnType || 'mixed';
-  const label = `${functionName}(${params.map((p) => p.label).join(', ')}): ${returnType}`;
-  const signature = { label, parameters: params, documentation: undefined };
-  phpBuiltInFunctionSignatureCache.set(cacheKey, signature);
-  return signature;
-}
-
-function runPhpReflectionForFunction(phpPath, functionName) {
-  return new Promise((resolve) => {
-    const code = `
-$name = ${JSON.stringify(functionName)};
-try {
-  $rf = new ReflectionFunction($name);
-  $params = [];
-  foreach ($rf->getParameters() as $p) {
-    $t = $p->getType();
-    $params[] = [
-      "name" => $p->getName(),
-      "type" => $t ? (string)$t : "",
-      "variadic" => $p->isVariadic(),
-      "byReference" => $p->isPassedByReference()
-    ];
-  }
-  $rt = $rf->getReturnType();
-  echo json_encode([
-    "name" => $rf->getName(),
-    "returnType" => $rt ? (string)$rt : "",
-    "parameters" => $params
-  ]);
-} catch (Throwable $e) {
-  echo "";
-}
-`.trim();
-    const php = spawn(phpPath, ['-r', code]);
-    let stdout = '';
-    php.stdout.on('data', (d) => { stdout += d.toString(); });
-    php.on('close', () => {
-      const text = String(stdout || '').trim();
-      if (!text) return resolve(null);
-      try {
-        return resolve(JSON.parse(text));
-      } catch {
-        return resolve(null);
-      }
-    });
-    php.on('error', () => resolve(null));
-    setTimeout(() => {
-      try { php.kill(); } catch {}
-      resolve(null);
-    }, 1500);
-  });
 }
 
 function inferPhpVariableTypes(document, position) {
@@ -2711,18 +2143,6 @@ function resolveCallHierarchyTargetFromCall(document, call, position) {
   return null;
 }
 
-function runPhpLint(phpPath, filePath) {
-  return new Promise((resolve, reject) => {
-    const php = spawn(phpPath, ['-l', filePath]);
-    let stdout = '';
-    let stderr = '';
-    php.stdout.on('data', (data) => { stdout += data.toString(); });
-    php.stderr.on('data', (data) => { stderr += data.toString(); });
-    php.on('error', reject);
-    php.on('close', (code) => resolve({ code, stdout, stderr }));
-  });
-}
-
 async function withTempPhpFile(contents, fn) {
   const tempDir = os.tmpdir();
   const name = `php-pro-${crypto.randomBytes(8).toString('hex')}.php`;
@@ -2737,18 +2157,6 @@ async function withTempPhpFile(contents, fn) {
   }
 }
 
-function parsePhpLintOutput(output) {
-  const diagnostics = [];
-  const lines = String(output || '').split(/\r?\n/);
-  for (const line of lines) {
-    const match = line.match(/(?:PHP\s+)?(?:Parse|Fatal)\s+error:\s*(.*?)\s+in\s+.*?\s+on\s+line\s+(\d+)/i);
-    if (!match) continue;
-    const lineNum = Math.max(0, parseInt(match[2], 10) - 1);
-    const message = match[1] || line.trim();
-    diagnostics.push({ lineNum, message });
-  }
-  return diagnostics;
-}
 
 async function validatePhpFile(document, options = { showMessages: false }) {
   const config = vscode.workspace.getConfiguration('php');
