@@ -9,8 +9,8 @@ on:
         default: false
         type: boolean
   push:
-    tags:
-      - "v*.*.*"
+    branches:
+      - "main"
 
 permissions:
   contents: read
