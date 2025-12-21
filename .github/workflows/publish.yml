@@ -1,18 +1,16 @@
 name: Publish VS Code Extension
 
 on:
-  # workflow_dispatch:
-  #   inputs:
-  #     publish:
-  #       description: Publish to VS Code Marketplace
-  #       required: true
-  #       default: false
-  #       type: boolean
-
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish to VS Code Marketplace
+        required: true
+        default: false
+        type: boolean
   push:
-    branches:
-      #- development
-      - main
+    tags:
+      - "v*.*.*"
 
 permissions:
   contents: read
