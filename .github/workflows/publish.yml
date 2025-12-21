@@ -8,9 +8,11 @@ on:
         required: true
         default: false
         type: boolean
+        
   push:
     branches:
-      - "main"
+      #- development
+      - main
 
 permissions:
   contents: read
